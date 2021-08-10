@@ -11,6 +11,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AppointmentsApi.Services;
+using System.Net.Http;
+using Polly.Extensions.Http;
+using Polly;
+using System.Net;
+using Polly.CircuitBreaker;
+
 namespace AppointmentsApi
 {
     public class Startup
@@ -26,11 +32,22 @@ namespace AppointmentsApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddTransient<ILookupDoctorAppointmentTimes, DoctorAppointmentFinder>();
-            services.AddControllers();
+            services.AddControllers().AddJsonOptions(options =>
+            {
+                //options.JsonSerializerOptions.
+            });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "AppointmentsApi", Version = "v1" });
             });
+
+            services.AddHttpClient<ICalendarApi, CalendarHttpClient>(client =>
+            {
+                client.BaseAddress = new Uri(Configuration["calendarApi"]);
+            })
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // refresh dns cache???
+                .AddPolicyHandler(GetRetryPolicy())
+                .AddPolicyHandler(GetCircuitBreaker());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -51,6 +68,23 @@ namespace AppointmentsApi
             {
                 endpoints.MapControllers();
             });
+        }
+
+        static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .OrResult(msg => msg.StatusCode == HttpStatusCode.NotFound)
+                .WaitAndRetryAsync(5, retryAttempts => TimeSpan.FromSeconds(Math.Pow(2, retryAttempts)));
+
+            // TODO:  Could put retry values in appsettings so prod has different values.
+        }
+
+        static AsyncCircuitBreakerPolicy<HttpResponseMessage> GetCircuitBreaker()
+        {
+            return Policy
+                .HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+                .CircuitBreakerAsync(2, TimeSpan.FromSeconds(30));
         }
     }
 }

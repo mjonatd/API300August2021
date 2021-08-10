@@ -7,11 +7,19 @@ namespace AppointmentsApi.Services
 {
     public class DoctorAppointmentFinder : ILookupDoctorAppointmentTimes
     {
+        private readonly ICalendarApi _calendarApi;
 
-        public Task<DateTime> GetNextAvailableAppoinmentFor(string doctor)
+        public DoctorAppointmentFinder(ICalendarApi calendarApi)
         {
-            var random = new Random();
-            return Task.FromResult(DateTime.Now.AddDays(random.Next(3, 5)));
+            _calendarApi = calendarApi;
+        }
+
+        public async Task<DateTime> GetNextAvailableAppoinmentFor(string doctor)
+        {
+            DateTime nextDate = await _calendarApi.GetNextDateAsync();
+            // Do whatever error handling you need here.
+
+            return nextDate;
         }
     }
 }
