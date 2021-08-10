@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-api
+spec:
+  selector:
+    matchLabels:
+      app: calendar-api
+  template:
+    metadata:
+      labels:
+        app: calendar-api
+    spec:
+      containers:
+      - name: calendar-api
+        image: jeffrygonzalez/calendar-api:aug-2021
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "100M"
+          limits:
+            memory: "2048M"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
