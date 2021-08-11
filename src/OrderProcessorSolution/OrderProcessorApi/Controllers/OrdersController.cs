@@ -19,7 +19,6 @@ namespace OrderProcessorApi.Controllers
         [HttpPost("orders")]
         public async Task<ActionResult> AddAnOrder([FromBody] OrderRequest request)
         {
-            var numberOfItems = request.Items.Count;
             var worked = await _channel.AddOrdersToProcess(request.Items);
             if(worked)
             {
